@@ -7,7 +7,8 @@
       "Bash(go test:*)",
       "Bash(./clickhouse.test:*)",
       "Bash(go get:*)",
-      "Bash(go mod tidy:*)"
+      "Bash(go mod tidy:*)",
+      "Bash(git add:*)"
     ],
     "defaultMode": "acceptEdits"
   }
