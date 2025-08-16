@@ -112,10 +112,63 @@ func (csg *ClickHouseSQLGenerator) GenInsert(tableName string, columns []dbi.Col
 		valueRows = append(valueRows, fmt.Sprintf("(%s)", strings.Join(rowValues, ", ")))
 	}
 
-	sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
-		quote(tableName),
-		strings.Join(columnNames, ", "),
-		strings.Join(valueRows, ", "))
+	// 处理Clickhouse的重复策略
+	switch duplicateStrategy {
+	case dbi.DuplicateStrategyNone:
+		// 对于DuplicateStrategyNone，直接插入数据，不处理重复
+		sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+			quote(tableName),
+			strings.Join(columnNames, ", "),
+			strings.Join(valueRows, ", "))
 
-	return []string{sql}
+		return []string{sql}
+	case dbi.DuplicateStrategyIgnore, dbi.DuplicateStrategyUpdate:
+		// 对于DuplicateStrategyIgnore和DuplicateStrategyUpdate，先删除重复数据，再插入新数据
+		// 对于MergeTree引擎，这两种策略效果相同
+		// 注意：这需要目标表有明确的主键列来识别重复项
+		// 假设第一列是主键列（在实际应用中应该根据表结构确定主键列）
+		keyColumn := columnNames[0]
+
+		// 构建删除重复数据的SQL
+		var deleteSqls []string
+		var keyValues []string
+
+		// 提取主键值
+		for _, row := range values {
+			if len(row) > 0 {
+				// 获取主键列的值
+				keyValue := columnTypes[0].DataType.SQLValue(row[0])
+				keyValues = append(keyValues, keyValue)
+			}
+		}
+
+		// 如果有主键值，构建删除语句
+		if len(keyValues) > 0 {
+			// 将主键值用逗号连接
+			keyValueList := strings.Join(keyValues, ", ")
+			deleteSql := fmt.Sprintf("ALTER TABLE %s DELETE WHERE %s IN (%s)",
+				quote(tableName),
+				keyColumn,
+				keyValueList)
+			deleteSqls = append(deleteSqls, deleteSql)
+		}
+
+		// 构建插入数据的SQL
+		sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+			quote(tableName),
+			strings.Join(columnNames, ", "),
+			strings.Join(valueRows, ", "))
+
+		// 返回删除和插入的SQL
+		result := append(deleteSqls, sql)
+		return result
+	default:
+		// 默认情况下，直接插入数据
+		sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+			quote(tableName),
+			strings.Join(columnNames, ", "),
+			strings.Join(valueRows, ", "))
+
+		return []string{sql}
+	}
 }
