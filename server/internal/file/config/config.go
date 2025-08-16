@@ -1,10 +1,9 @@
 package config
 
 import (
-	"cmp"
 	sysapp "mayfly-go/internal/sys/application"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 const (
@@ -20,6 +19,6 @@ func GetFileConfig() *FileConfig {
 	jm := c.GetJsonMap()
 
 	fc := new(FileConfig)
-	fc.BasePath = cmp.Or(cast.ToString(jm["basePath"]), "./file")
+	fc.BasePath = cast.ToStringD(jm["basePath"], "./file")
 	return fc
 }

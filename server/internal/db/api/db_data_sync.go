@@ -13,7 +13,7 @@ import (
 	"mayfly-go/pkg/utils/stringx"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type DataSyncTask struct {
@@ -80,26 +80,32 @@ func (d *DataSyncTask) SaveTask(rc *req.Ctx) {
 func (d *DataSyncTask) DeleteTask(rc *req.Ctx) {
 	taskId := rc.PathParam("taskId")
 	rc.ReqParam = taskId
+	ids := strings.Split(taskId, ",")
 
-	for _, v := range strings.Split(taskId, ",") {
+	for _, v := range ids {
 		biz.ErrIsNil(d.dataSyncTaskApp.Delete(rc.MetaCtx, cast.ToUint64(v)))
 	}
 }
 
 func (d *DataSyncTask) ChangeStatus(rc *req.Ctx) {
-	form := req.BindJson[*form.DataSyncTaskStatusForm](rc)
-	rc.ReqParam = form
+	form, task := req.BindJsonAndCopyTo[*form.DataSyncTaskStatusForm, *entity.DataSyncTask](rc)
+	_ = d.dataSyncTaskApp.UpdateById(rc.MetaCtx, task)
 
-	task, err := d.dataSyncTaskApp.GetById(form.Id)
-	biz.ErrIsNil(err)
-	task.Status = entity.DataSyncTaskStatus(form.Status)
-	biz.ErrIsNil(d.dataSyncTaskApp.Save(rc.MetaCtx, task))
+	if task.Status == entity.DataSyncTaskStatusEnable {
+		task, err := d.dataSyncTaskApp.GetById(task.Id)
+		biz.ErrIsNil(err, "task not found")
+		d.dataSyncTaskApp.AddCronJob(rc.MetaCtx, task)
+	} else {
+		d.dataSyncTaskApp.RemoveCronJobById(task.Id)
+	}
+	// 记录请求日志
+	rc.ReqParam = form
 }
 
 func (d *DataSyncTask) Run(rc *req.Ctx) {
 	taskId := d.getTaskId(rc)
 	rc.ReqParam = taskId
-	biz.ErrIsNil(d.dataSyncTaskApp.Run(rc.MetaCtx, taskId))
+	_ = d.dataSyncTaskApp.RunCronJob(rc.MetaCtx, taskId)
 }
 
 func (d *DataSyncTask) Stop(rc *req.Ctx) {

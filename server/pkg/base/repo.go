@@ -1,6 +1,7 @@
 package base
 
 import (
+	"cmp"
 	"context"
 	"mayfly-go/pkg/contextx"
 	"mayfly-go/pkg/gormx"
@@ -268,6 +269,17 @@ func (br *RepoImpl[T]) NewModel() T {
 	return newModel.(T)
 }
 
+// func (br *RepoImpl[T]) NewModes() *[]T {
+// 	// 创建一个空的切片
+// 	slice := reflect.MakeSlice(reflect.SliceOf(reflect.PointerTo(br.getModelType())), 0, 0)
+// 	// 创建指向切片的指针
+// 	ptrToSlice := reflect.New(slice.Type())
+// 	// 设置指向切片的指针为创建的空切片
+// 	ptrToSlice.Elem().Set(slice)
+// 	// 转换指向切片的指针
+// 	return ptrToSlice.Interface().(*[]T)
+// }
+
 // getModel 获取表的模型实例
 func (br *RepoImpl[T]) GetModel() T {
 	if br.model != nil {
@@ -298,7 +310,7 @@ func (br *RepoImpl[T]) getModelType() reflect.Type {
 // 从上下文获取登录账号信息，并赋值至实体
 func (br *RepoImpl[T]) fillBaseInfo(ctx context.Context, e T) T {
 	// 默认使用数据库id策略, 若要改变则实体结构体自行覆盖FillBaseInfo方法。可参考 sys/entity.Resource
-	e.FillBaseInfo(model.IdGenTypeNone, contextx.GetLoginAccount(ctx))
+	e.FillBaseInfo(model.IdGenTypeNone, cmp.Or(contextx.GetLoginAccount(ctx), model.SysAccount))
 	return e
 }
 

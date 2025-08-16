@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 const (

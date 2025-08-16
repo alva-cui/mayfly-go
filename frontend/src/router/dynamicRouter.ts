@@ -7,10 +7,6 @@ import { useKeepALiveNames } from '@/store/keepAliveNames';
 import router from '.';
 import { RouteRecordRaw } from 'vue-router';
 import { LAYOUT_ROUTE_NAME } from './staticRouter';
-import { LinkTypeEnum } from '@/common/commonEnum';
-
-const Link = () => import('@/layout/routerView/link.vue');
-const Iframe = () => import('@/layout/routerView/iframes.vue');
 
 /**
  * 获取目录下的 route.ts 全部文件
@@ -123,19 +119,9 @@ export function backEndRouterConverter(allModuleRoutes: any, routes: any, callba
         delete item['name'];
 
         // route.name == resource.meta.routeName
-        const routerName = item.meta.routeName;
-        item.name = routerName;
-        // 如果是外链类型，name的路由名都是Link 或者 Iframes会导致路由名重复，无法添加多个外链
-        if (item.meta.link) {
-            if (item.meta.linkType == LinkTypeEnum.Link.value) {
-                item.component = Link;
-            } else {
-                item.component = Iframe;
-            }
-        } else {
-            // routerName == 模块下route.ts 字段key == 组件名
-            item.component = allModuleRoutes[routerName];
-        }
+        item.name = item.meta.routeName;
+        // routerName == 模块下route.ts 字段key == 组件名
+        item.component = allModuleRoutes[item.meta.routeName];
         delete item.meta['routeName'];
 
         // route.redirect == resource.meta.redirect

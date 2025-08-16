@@ -65,7 +65,7 @@ export default {
         processName: 'Process Name',
         selectSortType: 'Please select a sort type',
         selectProcessNum: 'Please select the number of processes',
-        cpuDesc: 'CPU descending',
+        cpuDesc: 'CUP descending',
         memDesc: 'Memory descending',
         virtualMemory: 'Virtual Memory',
         fixedMemory: 'Fixed Memory',
@@ -138,7 +138,5 @@ export default {
         fileTooLargeTips: 'The file is too large, please download and use it',
         uploadSuccess: 'Upload successfully',
         fileExceedsSysConf: 'The uploaded file exceeds the system configuration [{uploadMaxFileSize}]',
-        fileUploadSuccess: 'Machine file upload successful',
-        fileUploadFail: 'Machine file upload failed',
     },
 };

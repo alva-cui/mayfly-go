@@ -8,22 +8,17 @@
                 <Main />
             </div>
         </el-container>
+        <el-backtop target=".layout-backtop .el-main .el-scrollbar__wrap"></el-backtop>
     </el-container>
 </template>
 
 <script lang="ts" setup name="layoutClassic">
 import { storeToRefs } from 'pinia';
 import { useThemeConfig } from '@/store/themeConfig';
-import { defineAsyncComponent, provide, ref } from 'vue';
-
-const Aside = defineAsyncComponent(() => import('@/layout/component/aside.vue'));
-const Header = defineAsyncComponent(() => import('@/layout/component/header.vue'));
-const Main = defineAsyncComponent(() => import('@/layout/component/main.vue'));
-const TagsView = defineAsyncComponent(() => import('@/layout/navBars/tagsView/tagsView.vue'));
+import Aside from '@/layout/component/aside.vue';
+import Header from '@/layout/component/header.vue';
+import Main from '@/layout/component/main.vue';
+import TagsView from '@/layout/navBars/tagsView/tagsView.vue';
 
 const { themeConfig } = storeToRefs(useThemeConfig());
-
-// 提供 classic 布局的菜单数据
-const classicMenuData = ref<any>(null);
-provide('classicMenuData', classicMenuData);
 </script>

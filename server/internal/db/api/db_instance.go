@@ -17,7 +17,7 @@ import (
 	"mayfly-go/pkg/utils/collx"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type Instance struct {

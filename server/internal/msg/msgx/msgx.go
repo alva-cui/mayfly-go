@@ -1,10 +1,8 @@
 package msgx
 
 import (
-	"context"
 	"fmt"
-	"mayfly-go/pkg/utils/collx"
-	"sync"
+	"mayfly-go/pkg/model"
 )
 
 type MsgType int8
@@ -17,8 +15,6 @@ const (
 )
 
 const (
-	ChannelTypeSiteMsg   ChannelType = "siteMsg" // 站内消息
-	ChannelTypeWs        ChannelType = "ws"      // websocket
 	ChannelTypeEmail     ChannelType = "email"
 	ChannelTypeDingBot   ChannelType = "dingBot"
 	ChannelTypeQywxBot   ChannelType = "qywxBot"
@@ -30,35 +26,35 @@ const (
 )
 
 // Send 发送消息
-func Send(ctx context.Context, channel *Channel, msg *Msg) error {
+func Send(channel *Channel, msg *Msg) error {
 	sender, err := GetMsgSender(channel.Type)
 	if err != nil {
 		return err
 	}
-	return sender.Send(ctx, channel, msg)
+	return sender.Send(channel, msg)
 }
 
 type Receiver struct {
-	Extra collx.M
+	model.ExtraData
 
-	Id     uint64 // 接收人ID
 	Mobile string
 	Email  string
 }
 
 type Msg struct {
-	Title     string         // 消息title
-	Type      MsgType        // 消息类型
-	Content   string         // 模板消息内容
-	Params    map[string]any // 消息参数(替换消息中的占位符)
-	TmplExtra collx.M        // 模板消息额外信息
+	model.ExtraData
+
+	Title   string         // 消息title
+	Type    MsgType        // 消息类型
+	Content string         // 消息内容
+	Params  map[string]any // 消息参数(替换消息中的占位符)
 
 	Receivers []Receiver // 消息接收人
 }
 
 // Channel 消息发送渠道信息
 type Channel struct {
-	Extra collx.M
+	model.ExtraData
 
 	Type ChannelType // 渠道类型
 	Name string
@@ -68,21 +64,21 @@ type Channel struct {
 // MsgSender 定义消息发送接口
 type MsgSender interface {
 	// Send 发送消息
-	Send(ctx context.Context, channel *Channel, msg *Msg) error
+	Send(channel *Channel, msg *Msg) error
 }
 
-var messageSenders sync.Map
+var messageSenders = make(map[ChannelType]MsgSender)
 
 // RegisterMsgSender 注册消息发送器
 func RegisterMsgSender(channel ChannelType, sender MsgSender) {
-	messageSenders.Store(channel, sender)
+	messageSenders[channel] = sender
 }
 
 // GetMsgSender 获取消息发送器
 func GetMsgSender(channel ChannelType) (MsgSender, error) {
-	sender, ok := messageSenders.Load(channel)
+	sender, ok := messageSenders[channel]
 	if !ok {
 		return nil, fmt.Errorf("unsupported message channel %s", channel)
 	}
-	return sender.(MsgSender), nil
+	return sender, nil
 }

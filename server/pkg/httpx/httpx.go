@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 // 默认超时

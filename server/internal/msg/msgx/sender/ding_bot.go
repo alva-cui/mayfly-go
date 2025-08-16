@@ -1,7 +1,6 @@
 package sender
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -41,7 +40,7 @@ type dingBotMsgResp struct {
 // DingBotSender 钉钉机器人消息发送
 type DingBotSender struct{}
 
-func (d DingBotSender) Send(ctx context.Context, channel *msgx.Channel, msg *msgx.Msg) error {
+func (d DingBotSender) Send(channel *msgx.Channel, msg *msgx.Msg) error {
 	// https://open.dingtalk.com/document/robots/custom-robot-access#title-72m-8ag-pqw
 	msgReq := dingBotMsgReq{}
 
@@ -74,7 +73,7 @@ func (d DingBotSender) Send(ctx context.Context, channel *msgx.Channel, msg *msg
 	}
 
 	timestamp := time.Now().UnixMilli()
-	sign, err := d.sign(channel.Extra.GetStr("secret"), timestamp)
+	sign, err := d.sign(channel.GetExtraString("secret"), timestamp)
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,7 @@ const (
 	ErrOtpCheckRestrict
 	ErrOtpCheckFail
 	ErrAccountNotAvailable
+	LoginMsg
 	ErrUsernameOrPwdErr
 	ErrOauth2NoAutoRegister
 )

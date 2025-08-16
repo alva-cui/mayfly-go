@@ -2,7 +2,7 @@ package dbi
 
 import (
 	"embed"
-	"mayfly-go/pkg/logx"
+	"mayfly-go/pkg/biz"
 	"mayfly-go/pkg/utils/collx"
 	"mayfly-go/pkg/utils/stringx"
 	"strings"
@@ -98,10 +98,7 @@ func GetLocalSql(file, key string) string {
 	}
 
 	bytes, err := metasql.ReadFile(file)
-	if err != nil {
-		logx.Error("failed to read sql metadata file: %s, err: %v", file, err)
-		return ""
-	}
+	biz.ErrIsNilAppendErr(err, "failed to get the contents of the sql meta file: %s")
 	allSql := string(bytes)
 
 	sqls := strings.Split(allSql, "---------------------------------------")

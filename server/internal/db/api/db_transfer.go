@@ -13,18 +13,19 @@ import (
 	"mayfly-go/pkg/biz"
 	"mayfly-go/pkg/model"
 	"mayfly-go/pkg/req"
+	"mayfly-go/pkg/utils/collx"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type DbTransferTask struct {
-	dbTransferTaskApp application.DbTransferTask `inject:"T"`
-	dbTransferFileApp application.DbTransferFile `inject:"T"`
-	dbApp             application.Db             `inject:"T"`
-	tagApp            tagapp.TagTree             `inject:"T"`
-	dbSqlExecApp      application.DbSqlExec      `inject:"T"`
-	fileApp           fileapp.File               `inject:"T"`
+	dbTransferTask application.DbTransferTask `inject:"T"`
+	dbTransferFile application.DbTransferFile `inject:"T"`
+	dbApp          application.Db             `inject:"T"`
+	tagApp         tagapp.TagTree             `inject:"T"`
+	dbSqlExecApp   application.DbSqlExec      `inject:"T"`
+	fileApp        fileapp.File               `inject:"T"`
 }
 
 func (d *DbTransferTask) ReqConfs() *req.Confs {
@@ -62,13 +63,13 @@ func (d *DbTransferTask) ReqConfs() *req.Confs {
 func (d *DbTransferTask) Tasks(rc *req.Ctx) {
 	queryCond := req.BindQuery[*entity.DbTransferTaskQuery](rc)
 
-	res, err := d.dbTransferTaskApp.GetPageList(queryCond)
+	res, err := d.dbTransferTask.GetPageList(queryCond)
 	biz.ErrIsNil(err)
 	resVo := model.PageResultConv[*entity.DbTransferTask, *vo.DbTransferTaskListVO](res)
 
 	for _, item := range resVo.List {
 		item.RunningState = entity.DbTransferTaskRunStateSuccess
-		if d.dbTransferTaskApp.IsRunning(item.Id) {
+		if d.dbTransferTask.IsRunning(item.Id) {
 			item.RunningState = entity.DbTransferTaskRunStateRunning
 		}
 	}
@@ -80,45 +81,48 @@ func (d *DbTransferTask) SaveTask(rc *req.Ctx) {
 	reqForm, task := req.BindJsonAndCopyTo[*form.DbTransferTaskForm, *entity.DbTransferTask](rc)
 
 	rc.ReqParam = reqForm
-	biz.ErrIsNil(d.dbTransferTaskApp.Save(rc.MetaCtx, task))
+	biz.ErrIsNil(d.dbTransferTask.Save(rc.MetaCtx, task))
 }
 
 func (d *DbTransferTask) DeleteTask(rc *req.Ctx) {
 	taskId := rc.PathParam("taskId")
 	rc.ReqParam = taskId
+	ids := strings.Split(taskId, ",")
 
-	for _, id := range strings.Split(taskId, ",") {
-		biz.ErrIsNil(d.dbTransferTaskApp.Delete(rc.MetaCtx, cast.ToUint64(id)))
-	}
+	uids := collx.ArrayMap[string, uint64](ids, func(val string) uint64 {
+		return cast.ToUint64(val)
+	})
+
+	biz.ErrIsNil(d.dbTransferTask.DeleteById(rc.MetaCtx, uids...))
 }
 
 func (d *DbTransferTask) ChangeStatus(rc *req.Ctx) {
-	form := req.BindJson[*form.DbTransferTaskStatusForm](rc)
-	rc.ReqParam = form
+	form, task := req.BindJsonAndCopyTo[*form.DbTransferTaskStatusForm, *entity.DbTransferTask](rc)
+	_ = d.dbTransferTask.UpdateById(rc.MetaCtx, task)
 
-	task, err := d.dbTransferTaskApp.GetById(form.Id)
-	biz.ErrIsNil(err)
-	task.Status = form.Status
-	biz.ErrIsNil(d.dbTransferTaskApp.Save(rc.MetaCtx, task))
+	task, err := d.dbTransferTask.GetById(task.Id)
+	biz.ErrIsNil(err, "task not found")
+	d.dbTransferTask.AddCronJob(rc.MetaCtx, task)
+
+	// 记录请求日志
+	rc.ReqParam = form
 }
 
 func (d *DbTransferTask) Run(rc *req.Ctx) {
 	taskId := uint64(rc.PathParamInt("taskId"))
-	rc.ReqParam = taskId
-
-	logId, err := d.dbTransferTaskApp.Run(rc.MetaCtx, taskId)
-	biz.ErrIsNil(err)
+	logId, _ := d.dbTransferTask.CreateLog(rc.MetaCtx, taskId)
+	go d.dbTransferTask.Run(rc.MetaCtx, taskId, logId)
 	rc.ResData = logId
 }
 
 func (d *DbTransferTask) Stop(rc *req.Ctx) {
-	biz.ErrIsNil(d.dbTransferTaskApp.Stop(rc.MetaCtx, uint64(rc.PathParamInt("taskId"))))
+	biz.ErrIsNil(d.dbTransferTask.Stop(rc.MetaCtx, uint64(rc.PathParamInt("taskId"))))
 }
 
 func (d *DbTransferTask) Files(rc *req.Ctx) {
 	queryCond := req.BindQuery[*entity.DbTransferFileQuery](rc)
 
-	res, err := d.dbTransferFileApp.GetPageList(queryCond)
+	res, err := d.dbTransferFile.GetPageList(queryCond)
 	biz.ErrIsNil(err)
 	rc.ResData = res
 }
@@ -132,15 +136,15 @@ func (d *DbTransferTask) FileDel(rc *req.Ctx) {
 	for _, v := range ids {
 		uIds = append(uIds, cast.ToUint64(v))
 	}
-	biz.ErrIsNil(d.dbTransferFileApp.Delete(rc.MetaCtx, uIds...))
+	biz.ErrIsNil(d.dbTransferFile.Delete(rc.MetaCtx, uIds...))
 }
 
 func (d *DbTransferTask) FileRun(rc *req.Ctx) {
-	fm := req.BindJson[*form.DbTransferFileRunForm](rc)
+	fm := req.BindJsonAndValid[*form.DbTransferFileRunForm](rc)
 
 	rc.ReqParam = fm
 
-	tFile, err := d.dbTransferFileApp.GetById(fm.Id)
+	tFile, err := d.dbTransferFile.GetById(fm.Id)
 	biz.IsTrue(tFile != nil && err == nil, "file not found")
 
 	targetDbConn, err := d.dbApp.GetDbConn(rc.MetaCtx, fm.TargetDbId, fm.TargetDbName)

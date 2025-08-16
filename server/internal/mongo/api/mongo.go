@@ -2,13 +2,13 @@ package api
 
 import (
 	"context"
+	"mayfly-go/internal/event"
 	"mayfly-go/internal/mongo/api/form"
 	"mayfly-go/internal/mongo/api/vo"
 	"mayfly-go/internal/mongo/application"
 	"mayfly-go/internal/mongo/domain/entity"
 	"mayfly-go/internal/mongo/imsg"
 	"mayfly-go/internal/pkg/consts"
-	"mayfly-go/internal/pkg/event"
 	tagapp "mayfly-go/internal/tag/application"
 	tagentity "mayfly-go/internal/tag/domain/entity"
 	"mayfly-go/pkg/biz"
@@ -19,10 +19,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/cast"
-
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"github.com/may-fly/cast"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Mongo struct {
@@ -146,7 +146,7 @@ func (m *Mongo) Collections(rc *req.Ctx) {
 }
 
 func (m *Mongo) RunCommand(rc *req.Ctx) {
-	commandForm := req.BindJson[*form.MongoRunCommand](rc)
+	commandForm := req.BindJsonAndValid[*form.MongoRunCommand](rc)
 
 	conn, err := m.mongoApp.GetMongoConn(rc.MetaCtx, m.GetMongoId(rc))
 	biz.ErrIsNil(err)
@@ -176,7 +176,7 @@ func (m *Mongo) RunCommand(rc *req.Ctx) {
 }
 
 func (m *Mongo) FindCommand(rc *req.Ctx) {
-	commandForm := req.BindJson[*form.MongoFindCommand](rc)
+	commandForm := req.BindJsonAndValid[*form.MongoFindCommand](rc)
 
 	conn, err := m.mongoApp.GetMongoConn(rc.MetaCtx, m.GetMongoId(rc))
 	biz.ErrIsNil(err)
@@ -196,7 +196,7 @@ func (m *Mongo) FindCommand(rc *req.Ctx) {
 	// 处理_id查询字段,使用ObjectId函数包装
 	id, ok := filter["_id"].(string)
 	if ok && id != "" {
-		objId, err := bson.ObjectIDFromHex(id)
+		objId, err := primitive.ObjectIDFromHex(id)
 		if err == nil {
 			filter["_id"] = objId
 		}
@@ -211,7 +211,7 @@ func (m *Mongo) FindCommand(rc *req.Ctx) {
 }
 
 func (m *Mongo) UpdateByIdCommand(rc *req.Ctx) {
-	commandForm := req.BindJson[*form.MongoUpdateByIdCommand](rc)
+	commandForm := req.BindJsonAndValid[*form.MongoUpdateByIdCommand](rc)
 
 	conn, err := m.mongoApp.GetMongoConn(rc.MetaCtx, m.GetMongoId(rc))
 	biz.ErrIsNil(err)
@@ -222,7 +222,7 @@ func (m *Mongo) UpdateByIdCommand(rc *req.Ctx) {
 	docId := commandForm.DocId
 	docIdVal, ok := docId.(string)
 	if ok {
-		objId, err := bson.ObjectIDFromHex(docIdVal)
+		objId, err := primitive.ObjectIDFromHex(docIdVal)
 		if err == nil {
 			docId = objId
 		}
@@ -235,7 +235,7 @@ func (m *Mongo) UpdateByIdCommand(rc *req.Ctx) {
 }
 
 func (m *Mongo) DeleteByIdCommand(rc *req.Ctx) {
-	commandForm := req.BindJson[*form.MongoUpdateByIdCommand](rc)
+	commandForm := req.BindJsonAndValid[*form.MongoUpdateByIdCommand](rc)
 
 	conn, err := m.mongoApp.GetMongoConn(rc.MetaCtx, m.GetMongoId(rc))
 	biz.ErrIsNil(err)
@@ -246,7 +246,7 @@ func (m *Mongo) DeleteByIdCommand(rc *req.Ctx) {
 	docId := commandForm.DocId
 	docIdVal, ok := docId.(string)
 	if ok {
-		objId, err := bson.ObjectIDFromHex(docIdVal)
+		objId, err := primitive.ObjectIDFromHex(docIdVal)
 		if err == nil {
 			docId = objId
 		}
@@ -258,7 +258,7 @@ func (m *Mongo) DeleteByIdCommand(rc *req.Ctx) {
 }
 
 func (m *Mongo) InsertOneCommand(rc *req.Ctx) {
-	commandForm := req.BindJson[*form.MongoInsertCommand](rc)
+	commandForm := req.BindJsonAndValid[*form.MongoInsertCommand](rc)
 
 	conn, err := m.mongoApp.GetMongoConn(rc.MetaCtx, m.GetMongoId(rc))
 	biz.ErrIsNil(err)

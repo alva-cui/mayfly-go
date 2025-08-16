@@ -13,19 +13,19 @@ import (
 	"mayfly-go/internal/db/imsg"
 	flowapp "mayfly-go/internal/flow/application"
 	flowentity "mayfly-go/internal/flow/domain/entity"
+	msgapp "mayfly-go/internal/msg/application"
 	msgdto "mayfly-go/internal/msg/application/dto"
-	"mayfly-go/internal/pkg/event"
 	"mayfly-go/pkg/contextx"
 	"mayfly-go/pkg/errorx"
-	"mayfly-go/pkg/global"
+	"mayfly-go/pkg/i18n"
 	"mayfly-go/pkg/logx"
 	"mayfly-go/pkg/model"
 	"mayfly-go/pkg/utils/anyx"
 	"mayfly-go/pkg/utils/collx"
 	"mayfly-go/pkg/utils/jsonx"
 	"mayfly-go/pkg/utils/stringx"
+	"mayfly-go/pkg/ws"
 	"strings"
-	"time"
 )
 
 type sqlExecParam struct {
@@ -71,6 +71,7 @@ type dbSqlExecAppImpl struct {
 	dbSqlExecRepo repository.DbSqlExec `inject:"T"`
 
 	flowProcdefApp flowapp.Procdef `inject:"T"`
+	msgApp         msgapp.Msg      `inject:"T"`
 }
 
 func createSqlExecRecord(ctx context.Context, execSqlReq *dto.DbSqlExecReq, sql string) *entity.DbSqlExec {
@@ -98,7 +99,7 @@ func (d *dbSqlExecAppImpl) Exec(ctx context.Context, execSqlReq *dto.DbSqlExecRe
 	stmts, err := sp.Parse(execSql)
 	// sql解析失败，则使用默认方式切割
 	if err != nil {
-		sqlparser.SQLSplit(strings.NewReader(execSql), ';', func(oneSql string) error {
+		sqlparser.SQLSplit(strings.NewReader(execSql), func(oneSql string) error {
 			var execRes *dto.DbSqlExecRes
 			var err error
 
@@ -205,55 +206,38 @@ func (d *dbSqlExecAppImpl) ExecReader(ctx context.Context, execReader *dto.SqlRe
 	la := contextx.GetLoginAccount(ctx)
 	needSendMsg := la != nil && clientId != ""
 
-	startTime := time.Now()
-	executedStatements := 0
-	progressId := stringx.Rand(32)
-
-	msgEvent := &msgdto.MsgTmplSendEvent{
-		TmplChannel: msgdto.MsgTmplSqlScriptRunSuccess,
-		Params:      collx.M{"filename": filename, "dbId": dbConn.Info.Id, "dbName": dbConn.Info.Name},
-	}
-
-	progressMsgEvent := &msgdto.MsgTmplSendEvent{
-		TmplChannel: msgdto.MsgTmplSqlScriptRunProgress,
-		Params: collx.M{
-			"id":                 progressId,
-			"title":              filename,
-			"executedStatements": executedStatements,
-			"terminated":         false,
-			"clientId":           clientId,
-		},
-	}
-
-	if needSendMsg {
-		msgEvent.ReceiverIds = []uint64{la.Id}
-		progressMsgEvent.ReceiverIds = []uint64{la.Id}
-	}
-
 	defer func() {
-		if needSendMsg {
-			progressMsgEvent.Params["terminated"] = true
-			global.EventBus.Publish(ctx, event.EventTopicMsgTmplSend, progressMsgEvent)
-		}
-
 		if err := recover(); err != nil {
 			errInfo := anyx.ToString(err)
 			logx.Errorf("exec sql reader error: %s", errInfo)
 			if needSendMsg {
 				errInfo = stringx.Truncate(errInfo, 300, 10, "...")
-				msgEvent.TmplChannel = msgdto.MsgTmplSqlScriptRunFail
-				msgEvent.Params["error"] = errInfo
-				global.EventBus.Publish(ctx, event.EventTopicMsgTmplSend, msgEvent)
+				d.msgApp.CreateAndSend(la, msgdto.ErrSysMsg(i18n.T(imsg.SqlScriptRunFail), fmt.Sprintf("[%s][%s] execution failure: [%s]", filename, dbConn.Info.GetLogDesc(), errInfo)).WithClientId(clientId))
 			}
 		}
 	}()
 
+	executedStatements := 0
+	progressId := stringx.Rand(32)
+	if needSendMsg {
+		defer ws.SendJsonMsg(ws.UserId(la.Id), clientId, msgdto.InfoSysMsg(i18n.T(imsg.SqlScripRunProgress), &progressMsg{
+			Id:                 progressId,
+			Title:              filename,
+			ExecutedStatements: executedStatements,
+			Terminated:         true,
+		}).WithCategory(progressCategory))
+	}
+
 	tx, _ := dbConn.Begin()
-	err := sqlparser.SQLSplit(execReader.Reader, ';', func(sql string) error {
+	err := sqlparser.SQLSplit(execReader.Reader, func(sql string) error {
 		if executedStatements%50 == 0 {
 			if needSendMsg {
-				progressMsgEvent.Params["executedStatements"] = executedStatements
-				global.EventBus.Publish(ctx, event.EventTopicMsgTmplSend, progressMsgEvent)
+				ws.SendJsonMsg(ws.UserId(la.Id), clientId, msgdto.InfoSysMsg(i18n.T(imsg.SqlScripRunProgress), &progressMsg{
+					Id:                 progressId,
+					Title:              filename,
+					ExecutedStatements: executedStatements,
+					Terminated:         false,
+				}).WithCategory(progressCategory))
 			}
 		}
 
@@ -265,18 +249,12 @@ func (d *dbSqlExecAppImpl) ExecReader(ctx context.Context, execReader *dto.SqlRe
 	})
 	if err != nil {
 		_ = tx.Rollback()
-		if needSendMsg {
-			msgEvent.TmplChannel = msgdto.MsgTmplSqlScriptRunFail
-			msgEvent.Params["error"] = err.Error()
-			global.EventBus.Publish(ctx, event.EventTopicMsgTmplSend, msgEvent)
-		}
 		return err
 	}
 	_ = tx.Commit()
 
 	if needSendMsg {
-		msgEvent.Params["cost"] = fmt.Sprintf("%dms", time.Since(startTime).Milliseconds())
-		global.EventBus.Publish(ctx, event.EventTopicMsgTmplSend, msgEvent)
+		d.msgApp.CreateAndSend(la, msgdto.SuccessSysMsg(i18n.T(imsg.SqlScriptRunSuccess), "execution success").WithClientId(clientId))
 	}
 	return nil
 }
@@ -611,35 +589,28 @@ func (d *dbSqlExecAppImpl) doExec(ctx context.Context, dbConn *dbi.DbConn, sql s
 }
 
 func isSelect(sql string) bool {
-	return strings.Contains(getSqlPrefix(sql), "select")
+	return strings.Contains(strings.ToLower(sql[:10]), "select")
 }
 
 func isUpdate(sql string) bool {
-	return strings.Contains(getSqlPrefix(sql), "update")
+	return strings.Contains(strings.ToLower(sql[:10]), "update")
 }
 
 func isDelete(sql string) bool {
-	return strings.Contains(getSqlPrefix(sql), "delete")
+	return strings.Contains(strings.ToLower(sql[:10]), "delete")
 }
 
 func isInsert(sql string) bool {
-	return strings.Contains(getSqlPrefix(sql), "insert")
+	return strings.Contains(strings.ToLower(sql[:10]), "insert")
 }
 
 func isOtherQuery(sql string) bool {
-	sqlPrefix := getSqlPrefix(sql)
+	sqlPrefix := strings.ToLower(sql[:10])
 	return strings.Contains(sqlPrefix, "explain") || strings.Contains(sqlPrefix, "show") || strings.Contains(sqlPrefix, "with")
 }
 
 func isDDL(sql string) bool {
-	sqlPrefix := getSqlPrefix(sql)
+	sqlPrefix := strings.ToLower(sql[:10])
 	return strings.Contains(sqlPrefix, "create") || strings.Contains(sqlPrefix, "alter") ||
 		strings.Contains(sqlPrefix, "drop") || strings.Contains(sqlPrefix, "truncate") || strings.Contains(sqlPrefix, "rename")
-}
-
-func getSqlPrefix(sql string) string {
-	if len(sql) < 10 {
-		return strings.ToLower(sql)
-	}
-	return strings.ToLower(sql[:10])
 }

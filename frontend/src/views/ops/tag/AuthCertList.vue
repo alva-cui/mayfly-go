@@ -42,9 +42,10 @@
 <script lang="ts" setup>
 import { toRefs, reactive, onMounted, ref, Ref } from 'vue';
 import { resourceAuthCertApi } from './api';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import PageTable from '@/components/pagetable/PageTable.vue';
 import { TableColumn } from '@/components/pagetable';
-import { SearchItem } from '@/components/pagetable/SearchForm';
+import { SearchItem } from '@/components/SearchForm';
 import { AuthCertCiphertextTypeEnum, AuthCertTypeEnum } from './enums';
 import { ResourceTypeEnum, TagResourceTypeEnum } from '@/common/commonEnum';
 import ResourceAuthCertEdit from '../component/ResourceAuthCertEdit.vue';

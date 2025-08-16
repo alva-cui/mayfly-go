@@ -4,15 +4,15 @@ import { h, reactive } from 'vue';
 import { ElNotification } from 'element-plus';
 import ProgressNotify from '@/components/progress-notify/progress-notify.vue';
 
-export async function initSysMsgs() {
-    await registerDbSqlExecProgress();
+export function initSysMsgs() {
+    registerDbSqlExecProgress();
 }
 
 const sqlExecNotifyMap: Map<string, any> = new Map();
 
-async function registerDbSqlExecProgress() {
-    await syssocket.registerMsgHandler('sqlScriptRunProgress', function (message: any) {
-        const content = message.params;
+function registerDbSqlExecProgress() {
+    syssocket.registerMsgHandler('execSqlFileProgress', function (message: any) {
+        const content = JSON.parse(message.msg);
         const id = content.id;
         let progress = sqlExecNotifyMap.get(id);
         if (content.terminated) {
@@ -38,7 +38,7 @@ async function registerDbSqlExecProgress() {
                 duration: 0,
                 title: message.title,
                 message: h(ProgressNotify, progress.props),
-                type: 'info',
+                type: syssocket.getMsgType(message.type),
                 showClose: false,
             });
             sqlExecNotifyMap.set(id, progress);

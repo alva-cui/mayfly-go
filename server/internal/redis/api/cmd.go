@@ -1,7 +1,7 @@
 package api
 
 import (
-	"mayfly-go/internal/pkg/event"
+	"mayfly-go/internal/event"
 	"mayfly-go/internal/redis/api/form"
 	"mayfly-go/internal/redis/application/dto"
 	"mayfly-go/pkg/biz"

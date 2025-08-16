@@ -9,6 +9,7 @@ import { GaussDialect } from '@/views/ops/db/dialect/gauss_dialect';
 import { KingbaseEsDialect } from '@/views/ops/db/dialect/kingbaseES_dialect';
 import { VastbaseDialect } from '@/views/ops/db/dialect/vastbase_dialect';
 import { Oracle11Dialect } from '@/views/ops/db/dialect/oracle11_dialect';
+import { ClickHouseDialect } from '@/views/ops/db/dialect/clickhouse_dialect';
 
 export interface sqlColumnType {
     udtName: string;
@@ -128,6 +129,7 @@ export const DbType = {
     mssql: 'mssql', // ms sqlserver
     kingbaseEs: 'kingbaseEs', // 人大金仓 pgsql模式 https://help.kingbase.com.cn/v8/index.html
     vastbase: 'vastbase', // https://docs.vastdata.com.cn/zh/docs/VastbaseG100Ver2.2.5/doc/%E5%BC%80%E5%8F%91%E8%80%85%E6%8C%87%E5%8D%97/SQL%E5%8F%82%E8%80%83/SQL%E5%8F%82%E8%80%83.html
+    clickhouse: 'clickhouse' // Yandex ClickHouse
 };
 
 // mysql兼容的数据库
@@ -136,7 +138,10 @@ export const noSchemaTypes = [DbType.mysql, DbType.mariadb, DbType.sqlite];
 // 有schema层的数据库
 export const schemaDbTypes = [DbType.postgresql, DbType.gauss, DbType.dm, DbType.oracle, DbType.mssql, DbType.kingbaseEs, DbType.vastbase];
 
-export const editDbTypes = [...noSchemaTypes, ...schemaDbTypes];
+// ClickHouse doesn't have traditional schemas like other databases
+// But it has databases that serve a similar purpose
+
+export const editDbTypes = [...noSchemaTypes, ...schemaDbTypes, DbType.clickhouse];
 
 export const compatibleMysql = (dbType: string): boolean => {
     switch (dbType) {
@@ -161,6 +166,7 @@ export const compatibleDuplicateStrategy = (dbType: string): boolean => {
         case DbType.oracle:
         case DbType.sqlite:
         case DbType.mssql:
+        case DbType.clickhouse:
             return true;
         default:
             return false;
@@ -301,4 +307,5 @@ export const QuoteEscape = (str: string): string => {
     registerDbDialect(DbType.mssql, new MssqlDialect());
     registerDbDialect(DbType.kingbaseEs, new KingbaseEsDialect());
     registerDbDialect(DbType.vastbase, new VastbaseDialect());
+    registerDbDialect(DbType.clickhouse, new ClickHouseDialect());
 })();

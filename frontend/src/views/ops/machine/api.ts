@@ -1,4 +1,5 @@
 import Api from '@/common/Api';
+import config from '@/common/config';
 import { joinClientParams } from '@/common/request';
 
 export const machineApi = {
@@ -66,9 +67,9 @@ export const cmdConfApi = {
 };
 
 export function getMachineTerminalSocketUrl(authCertName: any) {
-    return `/machines/terminal/${authCertName}`;
+    return `${config.baseWsUrl}/machines/terminal/${authCertName}?${joinClientParams()}`;
 }
 
 export function getMachineRdpSocketUrl(authCertName: any) {
-    return `/machines/rdp/${authCertName}`;
+    return `${config.baseWsUrl}/machines/rdp/${authCertName}`;
 }

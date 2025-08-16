@@ -8,17 +8,17 @@
 </template>
 
 <script lang="ts" setup name="layoutBreadcrumbIndex">
-import { computed, reactive, onMounted, watch, defineAsyncComponent } from 'vue';
+import { computed, reactive, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import pinia from '@/store/index';
 import { storeToRefs } from 'pinia';
 import { useThemeConfig } from '@/store/themeConfig';
 import { useRoutesList } from '@/store/routesList';
-
-const Breadcrumb = defineAsyncComponent(() => import('@/layout/navBars/breadcrumb/breadcrumb.vue'));
-const User = defineAsyncComponent(() => import('@/layout/navBars/breadcrumb/user.vue'));
-const Logo = defineAsyncComponent(() => import('@/layout/logo/index.vue'));
-const Horizontal = defineAsyncComponent(() => import('@/layout/navMenu/horizontal.vue'));
+import Breadcrumb from '@/layout/navBars/breadcrumb/breadcrumb.vue';
+import User from '@/layout/navBars/breadcrumb/user.vue';
+import Logo from '@/layout/logo/index.vue';
+import Horizontal from '@/layout/navMenu/horizontal.vue';
+import mittBus from '@/common/utils/mitt';
 
 const { themeConfig } = storeToRefs(useThemeConfig());
 const { routesList } = storeToRefs(useRoutesList());
@@ -42,6 +42,8 @@ const setFilterRoutes = () => {
     let { layout, isClassicSplitMenu } = themeConfig.value;
     if (layout === 'classic' && isClassicSplitMenu) {
         state.menuList = delClassicChildren(filterRoutesFun(routesList.value));
+        const resData = setSendClassicChildren(route.path);
+        mittBus.emit('setSendClassicChildren', resData);
     } else {
         state.menuList = filterRoutesFun(routesList.value);
     }
@@ -85,6 +87,13 @@ watch(pinia.state, (val) => {
 // 页面加载时
 onMounted(() => {
     setFilterRoutes();
+    mittBus.on('getBreadcrumbIndexSetFilterRoutes', () => {
+        setFilterRoutes();
+    });
+});
+// 页面卸载时
+onUnmounted(() => {
+    mittBus.off('getBreadcrumbIndexSetFilterRoutes');
 });
 </script>
 

@@ -64,14 +64,13 @@
 </template>
 
 <script lang="ts" setup>
-import { defineAsyncComponent, reactive, toRefs, watch } from 'vue';
+import { reactive, toRefs, watch } from 'vue';
 import { machineApi } from '../api';
 import { FileTypeEnum } from '../enums';
+import MachineFile from './MachineFile.vue';
+import MachineFileContent from './MachineFileContent.vue';
 import EnumSelect from '@/components/enumselect/EnumSelect.vue';
 import { useI18nDeleteConfirm, useI18nSaveSuccessMsg } from '@/hooks/useI18n';
-
-const MachineFile = defineAsyncComponent(() => import('./MachineFile.vue'));
-const MachineFileContent = defineAsyncComponent(() => import('./MachineFileContent.vue'));
 
 const props = defineProps({
     protocol: { type: Number, default: 1 },

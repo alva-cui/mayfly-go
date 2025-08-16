@@ -270,9 +270,12 @@ import { TableColumn } from '@/components/pagetable';
 import { hasPerms } from '@/components/auth/auth';
 import { formatByteSize, formatDate } from '@/common/utils/format';
 import { TagResourceTypePath } from '@/common/commonEnum';
-import { SearchItem } from '@/components/pagetable/SearchForm';
+import { SearchItem } from '@/components/SearchForm';
 import { getTagPathSearchItem } from '../component/tag';
+import MachineFile from '@/views/ops/machine/file/MachineFile.vue';
+import ResourceAuthCert from '../component/ResourceAuthCert.vue';
 import { MachineProtocolEnum } from './enums';
+import MachineRdpDialogComp from '@/components/terminal-rdp/MachineRdpDialog.vue';
 import { useI18n } from 'vue-i18n';
 import { useI18nDeleteConfirm, useI18nDeleteSuccessMsg } from '@/hooks/useI18n';
 
@@ -284,9 +287,6 @@ const FileConfList = defineAsyncComponent(() => import('./file/FileConfList.vue'
 const MachineStats = defineAsyncComponent(() => import('./MachineStats.vue'));
 const MachineRec = defineAsyncComponent(() => import('./MachineRec.vue'));
 const ProcessList = defineAsyncComponent(() => import('./ProcessList.vue'));
-const MachineFile = defineAsyncComponent(() => import('./file/MachineFile.vue'));
-const ResourceAuthCert = defineAsyncComponent(() => import('../component/ResourceAuthCert.vue'));
-const MachineRdpDialogComp = defineAsyncComponent(() => import('@/components/terminal-rdp/MachineRdpDialog.vue'));
 
 const { t } = useI18n();
 

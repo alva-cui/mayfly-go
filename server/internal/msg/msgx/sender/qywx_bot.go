@@ -1,7 +1,6 @@
 package sender
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"mayfly-go/internal/msg/msgx"
@@ -30,7 +29,7 @@ type qywxBotMsgResp struct {
 // QywxBotSender 企业微信机器人消息发送
 type QywxBotSender struct{}
 
-func (e QywxBotSender) Send(ctx context.Context, channel *msgx.Channel, msg *msgx.Msg) error {
+func (e QywxBotSender) Send(channel *msgx.Channel, msg *msgx.Msg) error {
 	// https://developer.work.weixin.qq.com/document/path/91770
 	msgReq := qywxBotMsgReq{}
 
@@ -39,7 +38,7 @@ func (e QywxBotSender) Send(ctx context.Context, channel *msgx.Channel, msg *msg
 	// 使用receiver参数替换消息内容中可能存在的接收人信息
 	if len(msg.Receivers) > 0 {
 		if to := collx.ArrayMapFilter(msg.Receivers, func(a msgx.Receiver) (string, bool) {
-			if uid := a.Extra.GetStr("qywxUserId"); uid != "" {
+			if uid := a.GetExtraString("qywxUserId"); uid != "" {
 				// 使用<@userId>用于@指定用户
 				return fmt.Sprintf("<@%s>", uid), true
 			}

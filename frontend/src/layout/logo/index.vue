@@ -1,7 +1,7 @@
 <template>
     <div class="layout-logo" v-if="setShowLogo" @click="onThemeConfigChange">
         <img :src="themeConfig.logoIcon" class="layout-logo-medium-img" />
-        <span class="logo-title">
+        <span>
             {{ `${themeConfig.globalTitle}` }}
             <sub
                 ><span style="font-size: 10px; color: goldenrod">{{ ` ${config.version}` }}</span></sub
@@ -18,6 +18,7 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useThemeConfig } from '@/store/themeConfig';
 import config from '@/common/config';
+import mittBus from '@/common/utils/mitt';
 
 const { themeConfig } = storeToRefs(useThemeConfig());
 
@@ -29,6 +30,7 @@ const setShowLogo = computed(() => {
 // logo 点击实现菜单展开/收起
 const onThemeConfigChange = () => {
     if (themeConfig.value.layout === 'transverse') return false;
+    mittBus.emit('onMenuClick');
     themeConfig.value.isCollapse = !themeConfig.value.isCollapse;
 };
 </script>
@@ -53,17 +55,8 @@ const onThemeConfigChange = () => {
     }
 
     &-medium-img {
-        width: 24px;
-        height: 24px;
-        margin-right: 8px;
-    }
-
-    .logo-title {
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: calc(100% - 32px);
+        width: 20px;
+        margin-right: 5px;
     }
 }
 
@@ -73,12 +66,10 @@ const onThemeConfigChange = () => {
     display: flex;
     cursor: pointer;
     animation: logoAnimation 0.3s ease-in-out;
-    justify-content: center;
-    align-items: center;
 
     &-img {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        margin: auto;
     }
 
     &:hover {

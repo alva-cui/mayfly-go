@@ -25,6 +25,8 @@ declare interface ThemeConfigState {
         isFixedHeader: boolean;
         isFixedHeaderChange: boolean;
         isClassicSplitMenu: boolean;
+        isLockScreen: boolean;
+        lockScreenTime: number;
         isShowLogo: boolean;
         isShowLogoChange: boolean;
         isBreadcrumb: boolean;
@@ -47,7 +49,6 @@ declare interface ThemeConfigState {
         isRequestRoutes: boolean;
         globalTitle: string;
         globalViceTitle: string;
-        appSlogan: string;
         logoIcon: string;
         globalI18n: string;
         globalComponentSize: string;
@@ -97,7 +98,6 @@ declare interface TagsView {
 // TagsView 路由列表
 declare interface TagsViewsState<> {
     tagsViews: TagsView[];
-    currentRefreshPath: string; // 当前刷新的路由 path
 }
 
 // 路由列表

@@ -11,13 +11,15 @@ import (
 	"mayfly-go/internal/db/dbm/dbi"
 	"mayfly-go/internal/db/domain/entity"
 	"mayfly-go/internal/db/imsg"
+	"mayfly-go/internal/event"
+	msgapp "mayfly-go/internal/msg/application"
 	msgdto "mayfly-go/internal/msg/application/dto"
-	"mayfly-go/internal/pkg/event"
 	"mayfly-go/internal/pkg/utils"
 	tagapp "mayfly-go/internal/tag/application"
 	tagentity "mayfly-go/internal/tag/domain/entity"
 	"mayfly-go/pkg/biz"
 	"mayfly-go/pkg/global"
+	"mayfly-go/pkg/i18n"
 	"mayfly-go/pkg/logx"
 	"mayfly-go/pkg/model"
 	"mayfly-go/pkg/req"
@@ -27,13 +29,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type Db struct {
 	instanceApp  application.Instance  `inject:"T"`
 	dbApp        application.Db        `inject:"T"`
 	dbSqlExecApp application.DbSqlExec `inject:"T"`
+	msgApp       msgapp.Msg            `inject:"T"`
 	tagApp       tagapp.TagTree        `inject:"T"`
 }
 
@@ -132,7 +135,7 @@ func (d *Db) DeleteDb(rc *req.Ctx) {
 /**  数据库操作相关、执行sql等   ***/
 
 func (d *Db) ExecSql(rc *req.Ctx) {
-	form := req.BindJson[*form.DbSqlExecForm](rc)
+	form := req.BindJsonAndValid[*form.DbSqlExecForm](rc)
 
 	ctx, cancel := context.WithTimeout(rc.MetaCtx, time.Duration(config.GetDbms().SqlExecTl)*time.Second)
 	defer cancel()
@@ -162,6 +165,17 @@ func (d *Db) ExecSql(rc *req.Ctx) {
 	execRes, err := d.dbSqlExecApp.Exec(ctx, execReq)
 	biz.ErrIsNil(err)
 	rc.ResData = execRes
+}
+
+// progressCategory sql文件执行进度消息类型
+const progressCategory = "execSqlFileProgress"
+
+// progressMsg sql文件执行进度消息
+type progressMsg struct {
+	Id                 string `json:"id"`
+	Title              string `json:"title"`
+	ExecutedStatements int    `json:"executedStatements"`
+	Terminated         bool   `json:"terminated"`
 }
 
 // 执行sql文件
@@ -232,11 +246,7 @@ func (d *Db) DumpSql(rc *req.Ctx) {
 		if len(msg) > 0 {
 			msg = "DB dump error: " + msg
 			rc.GetWriter().Write([]byte(msg))
-			global.EventBus.Publish(rc.MetaCtx, event.EventTopicMsgTmplSend, &msgdto.MsgTmplSendEvent{
-				TmplChannel: msgdto.MsgTmplDbDumpFail,
-				Params:      collx.M{"dbId": dbConn.Info.Id, "dbName": dbConn.Info.Name, "error": msg},
-				ReceiverIds: []uint64{la.Id},
-			})
+			d.msgApp.CreateAndSend(la, msgdto.ErrSysMsg(i18n.T(imsg.DbDumpErr), msg))
 		}
 	}()
 

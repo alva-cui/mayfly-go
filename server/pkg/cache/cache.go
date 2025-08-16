@@ -5,7 +5,7 @@ import (
 	"mayfly-go/pkg/utils/anyx"
 	"time"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type Cache interface {

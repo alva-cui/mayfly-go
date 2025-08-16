@@ -13,7 +13,7 @@
                 <span>{{ $t(val.meta.title) }}</span>
             </template>
             <template v-else>
-                <a class="w-full" :href="val.meta.link" target="_blank">
+                <a :href="val.meta.link" target="_blank">
                     <SvgIcon :name="val.meta.icon" />
                     {{ $t(val.meta.title) }}
                 </a>
@@ -22,20 +22,24 @@
     </template>
 </template>
 
-<script setup lang="ts" name="navMenuSubItem">
-import { computed } from 'vue';
-
-// 定义 props
-interface Props {
-    chil?: any[];
-}
-
-const props = withDefaults(defineProps<Props>(), {
-    chil: () => [],
-});
-
-// 获取父级菜单数据
-const chils = computed(() => {
-    return props.chil as any;
+<script lang="ts">
+import { computed, defineComponent } from 'vue';
+export default defineComponent({
+    name: 'navMenuSubItem',
+    props: {
+        chil: {
+            type: Array,
+            default: () => [],
+        },
+    },
+    setup(props) {
+        // 获取父级菜单数据
+        const chils = computed(() => {
+            return props.chil as any;
+        });
+        return {
+            chils,
+        };
+    },
 });
 </script>

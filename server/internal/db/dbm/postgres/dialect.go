@@ -5,7 +5,7 @@ import (
 	"mayfly-go/internal/db/dbm/dbi"
 	"time"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type PgsqlDialect struct {

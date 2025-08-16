@@ -14,7 +14,10 @@ var En = map[i18n.MsgId]string{
 	LogDbRunSql: "DB - Run SQL",
 	LogDbDump:   "DB - Export DB",
 
+	SqlScriptRunFail:    "sql script failed to execute",
+	SqlScriptRunSuccess: "sql script executed successfully",
 	SqlScripRunProgress: "sql execution progress",
+	DbDumpErr:           "Database export failed",
 	ErrDbNameExist:      "The database name already exists in this instance",
 	ErrDbNotAccess:      "The operation permissions of database [{{.dbName}}] are not configured",
 
@@ -34,7 +37,4 @@ var En = map[i18n.MsgId]string{
 	LogDataSyncSave:         "datasync - Save data sync task",
 	LogDataSyncDelete:       "datasync - Delete data sync task",
 	LogDataSyncChangeStatus: "datasync - Change status",
-	DataSyncSuccessMsg:      "the synchronous task was executed successfully. New data: {{.count}}",
-	DataSyncFailMsg:         "execution failure: {{.msg}}",
-	DataSyncingMsg:          "during the execution of this task, {{.count}} has been synchronized",
 }

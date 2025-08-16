@@ -6,7 +6,7 @@ import (
 	pgparser "mayfly-go/internal/db/dbm/sqlparser/pgsql/antlr4"
 	"mayfly-go/internal/db/dbm/sqlparser/sqlstmt"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type PgsqlVisitor struct {

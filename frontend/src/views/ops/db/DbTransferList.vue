@@ -59,16 +59,9 @@
             <template #action="{ data }">
                 <!-- 删除、启停用、编辑 -->
                 <el-button v-if="actionBtns[perms.save]" @click="edit(data)" type="primary" link>{{ $t('common.edit') }}</el-button>
-                <el-button v-if="actionBtns[perms.log]" type="warning" link @click="onOpenLog(data)">{{ $t('db.log') }}</el-button>
-                <el-button v-if="data.runningState === DbTransferRunningStateEnum.Running.value" @click="stop(data.id)" type="danger" link>
-                    {{ $t('db.stop') }}
-                </el-button>
-                <el-button
-                    v-if="actionBtns[perms.run] && data.runningState !== DbTransferRunningStateEnum.Running.value && data.status === 1"
-                    type="success"
-                    link
-                    @click="onReRun(data)"
-                >
+                <el-button v-if="actionBtns[perms.log]" type="warning" link @click="log(data)">{{ $t('db.log') }}</el-button>
+                <el-button v-if="data.runningState === 1" @click="stop(data.id)" type="danger" link>{{ $t('db.stop') }}</el-button>
+                <el-button v-if="actionBtns[perms.run] && data.runningState !== 1 && data.status === 1" type="success" link @click="reRun(data)">
                     {{ $t('db.run') }}
                 </el-button>
                 <el-button v-if="actionBtns[perms.files] && data.mode === 2" type="success" link @click="openFiles(data)">{{ $t('db.file') }}</el-button>
@@ -88,7 +81,7 @@ import { dbApi } from './api';
 import PageTable from '@/components/pagetable/PageTable.vue';
 import { TableColumn } from '@/components/pagetable';
 import { hasPerms } from '@/components/auth/auth';
-import { SearchItem } from '@/components/pagetable/SearchForm';
+import { SearchItem } from '@/components/SearchForm';
 import { getDbDialect } from '@/views/ops/db/dialect';
 import { DbTransferRunningStateEnum } from './enums';
 import TerminalLog from '@/components/terminal/TerminalLog.vue';
@@ -194,20 +187,21 @@ const stop = async (id: any) => {
     search();
 };
 
-const onOpenLog = (data: any) => {
+const log = (data: any) => {
     state.logsDialog.logId = data.logId;
     state.logsDialog.visible = true;
     state.logsDialog.title = t('db.log');
-    state.logsDialog.running = data.state === DbTransferRunningStateEnum.Running.value;
+    state.logsDialog.running = data.state === 1;
 };
 
-const onReRun = async (data: any) => {
+const reRun = async (data: any) => {
     await useI18nConfirm('db.runConfirm');
     try {
         let res = await dbApi.runDbTransferTask.request({ taskId: data.id });
+        console.log(res);
         useI18nOperateSuccessMsg();
         // 拿到日志id之后，弹出日志弹窗
-        onOpenLog({ logId: res, state: DbTransferRunningStateEnum.Running.value });
+        log({ logId: res, state: 1 });
     } catch (e) {
         //
     }

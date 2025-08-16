@@ -12,7 +12,7 @@ import (
 	"mayfly-go/pkg/utils/jsonx"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type MsgTmpl struct {
@@ -74,7 +74,7 @@ func (m *MsgTmpl) DelMsgTmpls(rc *req.Ctx) {
 
 func (m *MsgTmpl) SendMsg(rc *req.Ctx) {
 	code := rc.PathParam("code")
-	form := req.BindJson[*form.SendMsg](rc)
+	form := req.BindJsonAndValid[*form.SendMsg](rc)
 
 	rc.ReqParam = form
 

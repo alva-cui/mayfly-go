@@ -151,7 +151,7 @@ import { ElMessage } from 'element-plus';
 import { initRouter } from '@/router/index';
 import { getRefreshToken, saveRefreshToken, saveToken, saveUser } from '@/common/utils/storage';
 import openApi from '@/common/openApi';
-import { RsaEncrypt } from '@/common/crypto';
+import { RsaEncrypt } from '@/common/rsa';
 import { getAccountLoginSecurity, getLdapEnabled } from '@/common/sysconfig';
 import { letterAvatar } from '@/common/utils/string';
 import { useUserInfo } from '@/store/userInfo';
@@ -503,12 +503,5 @@ defineExpose({
         font-weight: 300;
         margin-top: 15px;
     }
-}
-
-// 修复表单label与输入框不对齐的问题
-:deep(.el-form-item .el-form-item__label) {
-    align-items: center;
-    display: flex;
-    height: 100%;
 }
 </style>

@@ -2,16 +2,16 @@ package application
 
 import (
 	"context"
+	"mayfly-go/internal/event"
 	"mayfly-go/internal/flow/domain/entity"
 	"mayfly-go/internal/flow/imsg"
-	"mayfly-go/internal/flow/infra/persistence"
+	"mayfly-go/internal/flow/infrastructure/persistence"
 	msgdto "mayfly-go/internal/msg/application/dto"
-	"mayfly-go/internal/pkg/event"
 	"mayfly-go/pkg/errorx"
 	"mayfly-go/pkg/global"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 /******************* 用户任务节点 *******************/
@@ -103,24 +103,17 @@ func (u *UserTaskNodeBehavior) Execute(ctx *ExecutionCtx) error {
 
 			// 用户账号类型
 			if !strings.Contains(candidate, ":") {
-				params := map[string]any{
-					"creator":        procinst.Creator,
-					"procdefName":    procinst.ProcdefName,
-					"bizKey":         procinst.BizKey,
-					"taskName":       flowNode.Name,
-					"procinstRemark": procinst.Remark,
-				}
 				// 发送通知消息
-				global.EventBus.Publish(context.Background(), event.EventTopicBizMsgTmplSend, &msgdto.BizMsgTmplSend{
-					BizType:     FlowTaskNotifyBizKey,
-					BizId:       procinst.ProcdefId,
-					Params:      params,
-					ReceiverIds: []uint64{cast.ToUint64(candidate)},
-				})
-
-				global.EventBus.Publish(context.Background(), event.EventTopicMsgTmplSend, &msgdto.MsgTmplSendEvent{
-					TmplChannel: msgdto.MsgTmplFlowUserTaskTodo,
-					Params:      params,
+				global.EventBus.Publish(ctx, event.EventTopicBizMsgTmplSend, msgdto.BizMsgTmplSend{
+					BizType: FlowTaskNotifyBizKey,
+					BizId:   procinst.ProcdefId,
+					Params: map[string]any{
+						"creator":        procinst.Creator,
+						"procdefName":    procinst.ProcdefName,
+						"bizKey":         procinst.BizKey,
+						"taskName":       flowNode.Name,
+						"procinstRemark": procinst.Remark,
+					},
 					ReceiverIds: []uint64{cast.ToUint64(candidate)},
 				})
 			}

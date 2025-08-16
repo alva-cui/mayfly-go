@@ -18,7 +18,7 @@ import (
 	"mayfly-go/pkg/utils/structx"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type Procdef struct {
@@ -97,7 +97,7 @@ func (a *Procdef) Save(rc *req.Ctx) {
 }
 
 func (a *Procdef) SaveFlowDef(rc *req.Ctx) {
-	form := req.BindJson[*form.ProcdefFlow](rc)
+	form := req.BindJsonAndValid[*form.ProcdefFlow](rc)
 	rc.ReqParam = form
 
 	biz.ErrIsNil(a.procdefApp.SaveFlowDef(rc.MetaCtx, &dto.SaveFlowDef{

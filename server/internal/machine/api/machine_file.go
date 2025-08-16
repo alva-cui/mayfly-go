@@ -12,14 +12,15 @@ import (
 	"mayfly-go/internal/machine/domain/entity"
 	"mayfly-go/internal/machine/imsg"
 	"mayfly-go/internal/machine/mcm"
+	msgapp "mayfly-go/internal/msg/application"
 	msgdto "mayfly-go/internal/msg/application/dto"
-	"mayfly-go/internal/pkg/event"
 	"mayfly-go/pkg/biz"
 	"mayfly-go/pkg/errorx"
-	"mayfly-go/pkg/global"
+	"mayfly-go/pkg/i18n"
 	"mayfly-go/pkg/logx"
 	"mayfly-go/pkg/model"
 	"mayfly-go/pkg/req"
+	"mayfly-go/pkg/utils/anyx"
 	"mayfly-go/pkg/utils/collx"
 	"mayfly-go/pkg/utils/timex"
 	"mime/multipart"
@@ -29,12 +30,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/may-fly/cast"
 	"github.com/pkg/sftp"
-	"github.com/spf13/cast"
 )
 
 type MachineFile struct {
 	machineFileApp application.MachineFile `inject:"T"`
+	msgApp         msgapp.Msg              `inject:"T"`
 }
 
 func (mf *MachineFile) ReqConfs() *req.Confs {
@@ -104,7 +106,7 @@ func (m *MachineFile) DeleteFile(rc *req.Ctx) {
 /***      sftp相关操作      */
 
 func (m *MachineFile) CreateFile(rc *req.Ctx) {
-	opForm := req.BindJson[*form.CreateFileForm](rc)
+	opForm := req.BindJsonAndValid[*form.CreateFileForm](rc)
 	path := opForm.Path
 
 	attrs := collx.Kvs("path", path)
@@ -237,7 +239,7 @@ func (m *MachineFile) GetFileStat(rc *req.Ctx) {
 }
 
 func (m *MachineFile) WriteFileContent(rc *req.Ctx) {
-	opForm := req.BindJson[*form.WriteFileContentForm](rc)
+	opForm := req.BindJsonAndValid[*form.WriteFileContentForm](rc)
 	path := opForm.Path
 
 	mi, err := m.machineFileApp.WriteFileContent(rc.MetaCtx, opForm.MachineFileOp, []byte(opForm.Content))
@@ -262,6 +264,14 @@ func (m *MachineFile) UploadFile(rc *req.Ctx) {
 	file, _ := fileheader.Open()
 	defer file.Close()
 
+	la := rc.GetLoginAccount()
+	defer func() {
+		if anyx.ToString(recover()) != "" {
+			logx.Errorf("upload file error: %s", err)
+			m.msgApp.CreateAndSend(la, msgdto.ErrSysMsg(i18n.TC(ctx, imsg.ErrFileUploadFail), fmt.Sprintf("%s: \n<-e : %s", i18n.TC(ctx, imsg.ErrFileUploadFail), err)))
+		}
+	}()
+
 	opForm := &dto.MachineFileOp{
 		MachineId:    machineId,
 		AuthCertName: authCertName,
@@ -271,27 +281,9 @@ func (m *MachineFile) UploadFile(rc *req.Ctx) {
 
 	mi, err := m.machineFileApp.UploadFile(ctx, opForm, fileheader.Filename, file)
 	rc.ReqParam = collx.Kvs("machine", mi, "path", fmt.Sprintf("%s/%s", path, fileheader.Filename))
-
-	// 发送文件上传结果消息
-	msgEvent := &msgdto.MsgTmplSendEvent{
-		TmplChannel: msgdto.MsgTmplMachineFileUploadSuccess,
-		Params: collx.M{
-			"filename": fileheader.Filename,
-			"path":     path,
-		},
-		ReceiverIds: []uint64{rc.GetLoginAccount().Id},
-	}
-	if err != nil {
-		msgEvent.Params["error"] = err.Error()
-		msgEvent.TmplChannel = msgdto.MsgTmplMachineFileUploadFail
-	}
-	if mi != nil {
-		msgEvent.Params["machineName"] = mi.Name
-		msgEvent.Params["machineCode"] = mi.Code
-	}
-	global.EventBus.Publish(ctx, event.EventTopicMsgTmplSend, msgEvent)
-
 	biz.ErrIsNilAppendErr(err, "upload file error: %s")
+	// 保存消息并发送文件上传成功通知
+	m.msgApp.CreateAndSend(la, msgdto.SuccessSysMsg(i18n.TC(ctx, imsg.MsgUploadFileSuccess), fmt.Sprintf("[%s] -> %s[%s:%s]", fileheader.Filename, mi.Name, mi.Ip, path)))
 }
 
 type FolderFile struct {
@@ -358,17 +350,6 @@ func (m *MachineFile) UploadFolder(rc *req.Ctx) {
 		}
 	}
 
-	msgEvent := &msgdto.MsgTmplSendEvent{
-		TmplChannel: msgdto.MsgTmplMachineFileUploadSuccess,
-		Params: collx.M{
-			"filename":    folderName,
-			"path":        basePath,
-			"machineName": mi.Name,
-			"machineCode": mi.Code,
-		},
-		ReceiverIds: []uint64{rc.GetLoginAccount().Id},
-	}
-
 	// 分组处理
 	groupNum := 30
 	chunks := collx.ArraySplit(folderFiles, groupNum)
@@ -378,6 +359,7 @@ func (m *MachineFile) UploadFolder(rc *req.Ctx) {
 	wg.Add(len(chunks))
 
 	isSuccess := true
+	la := rc.GetLoginAccount()
 	for _, chunk := range chunks {
 		go func(files []FolderFile, wg *sync.WaitGroup) {
 			defer func() {
@@ -388,11 +370,7 @@ func (m *MachineFile) UploadFolder(rc *req.Ctx) {
 					logx.Errorf("upload file error: %s", err)
 					switch t := err.(type) {
 					case *errorx.BizError:
-						{
-							msgEvent.TmplChannel = msgdto.MsgTmplMachineFileUploadFail
-							msgEvent.Params["error"] = t.Error()
-							global.EventBus.Publish(ctx, event.EventTopicMsgTmplSend, msgEvent)
-						}
+						m.msgApp.CreateAndSend(la, msgdto.ErrSysMsg(i18n.TC(ctx, imsg.ErrFileUploadFail), fmt.Sprintf("%s: \n<-e errCode: %d, errMsg: %s", i18n.TC(ctx, imsg.ErrFileUploadFail), t.Code(), t.Error())))
 					}
 				}
 			}()
@@ -416,12 +394,13 @@ func (m *MachineFile) UploadFolder(rc *req.Ctx) {
 	// 等待所有协程执行完成
 	wg.Wait()
 	if isSuccess {
-		global.EventBus.Publish(ctx, event.EventTopicMsgTmplSend, msgEvent)
+		// 保存消息并发送文件上传成功通知
+		m.msgApp.CreateAndSend(la, msgdto.SuccessSysMsg(i18n.TC(ctx, imsg.MsgUploadFileSuccess), fmt.Sprintf("[%s] -> %s[%s:%s]", folderName, mi.Name, mi.Ip, basePath)))
 	}
 }
 
 func (m *MachineFile) RemoveFile(rc *req.Ctx) {
-	opForm := req.BindJson[*form.RemoveFileForm](rc)
+	opForm := req.BindJsonAndValid[*form.RemoveFileForm](rc)
 
 	mi, err := m.machineFileApp.RemoveFile(rc.MetaCtx, opForm.MachineFileOp, opForm.Paths...)
 	rc.ReqParam = collx.Kvs("machine", mi, "path", opForm)
@@ -429,21 +408,21 @@ func (m *MachineFile) RemoveFile(rc *req.Ctx) {
 }
 
 func (m *MachineFile) CopyFile(rc *req.Ctx) {
-	opForm := req.BindJson[*form.CopyFileForm](rc)
+	opForm := req.BindJsonAndValid[*form.CopyFileForm](rc)
 	mi, err := m.machineFileApp.Copy(rc.MetaCtx, opForm.MachineFileOp, opForm.ToPath, opForm.Paths...)
 	biz.ErrIsNilAppendErr(err, "file copy error: %s")
 	rc.ReqParam = collx.Kvs("machine", mi, "cp", opForm)
 }
 
 func (m *MachineFile) MvFile(rc *req.Ctx) {
-	opForm := req.BindJson[*form.CopyFileForm](rc)
+	opForm := req.BindJsonAndValid[*form.CopyFileForm](rc)
 	mi, err := m.machineFileApp.Mv(rc.MetaCtx, opForm.MachineFileOp, opForm.ToPath, opForm.Paths...)
 	rc.ReqParam = collx.Kvs("machine", mi, "mv", opForm)
 	biz.ErrIsNilAppendErr(err, "file move error: %s")
 }
 
 func (m *MachineFile) Rename(rc *req.Ctx) {
-	renameForm := req.BindJson[*form.RenameForm](rc)
+	renameForm := req.BindJsonAndValid[*form.RenameForm](rc)
 	mi, err := m.machineFileApp.Rename(rc.MetaCtx, renameForm.MachineFileOp, renameForm.Newname)
 	rc.ReqParam = collx.Kvs("machine", mi, "rename", renameForm)
 	biz.ErrIsNilAppendErr(err, "file rename error: %s")

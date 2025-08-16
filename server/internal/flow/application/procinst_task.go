@@ -11,7 +11,7 @@ import (
 	"mayfly-go/pkg/model"
 	"mayfly-go/pkg/utils/stringx"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type ProcinstTask interface {

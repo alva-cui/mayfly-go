@@ -1,7 +1,6 @@
 package sender
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -15,7 +14,7 @@ import (
 
 	"time"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type feishuBotMsgReq struct {
@@ -35,7 +34,7 @@ type feishuBotMsgResp struct {
 // FeishuBotSender 发送飞书机器人消息
 type FeishuBotSender struct{}
 
-func (f FeishuBotSender) Send(ctx context.Context, channel *msgx.Channel, msg *msgx.Msg) error {
+func (f FeishuBotSender) Send(channel *msgx.Channel, msg *msgx.Msg) error {
 	// https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot
 	msgReq := feishuBotMsgReq{
 		MsgType: "text",
@@ -46,7 +45,7 @@ func (f FeishuBotSender) Send(ctx context.Context, channel *msgx.Channel, msg *m
 	// 使用receiver参数替换消息内容中可能存在的接收人信息
 	if len(msg.Receivers) > 0 {
 		if to := collx.ArrayMapFilter(msg.Receivers, func(a msgx.Receiver) (string, bool) {
-			if uid := a.Extra.GetStr("feishuUserId"); uid != "" {
+			if uid := a.GetExtraString("feishuUserId"); uid != "" {
 				// 使用<at user_id="userId"></at>
 				return fmt.Sprintf(`<at user_id="%s"></at>`, uid), true
 			}
@@ -63,7 +62,7 @@ func (f FeishuBotSender) Send(ctx context.Context, channel *msgx.Channel, msg *m
 
 	msgReq.Content.Text = content
 
-	if secret := channel.Extra.GetStr("secret"); secret != "" {
+	if secret := channel.GetExtraString("secret"); secret != "" {
 		timestamp := time.Now().Unix()
 		if sign, err := f.sign(secret, timestamp); err != nil {
 			return err

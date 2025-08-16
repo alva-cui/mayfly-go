@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 func TestTagPath(t *testing.T) {

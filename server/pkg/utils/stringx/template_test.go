@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 func TestTemplateParse(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"mayfly-go/internal/tag/domain/entity"
 	"mayfly-go/internal/tag/domain/repository"
 	"mayfly-go/internal/tag/imsg"
-	"mayfly-go/internal/tag/infra/cache"
+	"mayfly-go/internal/tag/infrastructure/cache"
 	"mayfly-go/pkg/base"
 	"mayfly-go/pkg/contextx"
 	"mayfly-go/pkg/errorx"
@@ -18,7 +18,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/may-fly/cast"
 )
 
 type TagTree interface {
