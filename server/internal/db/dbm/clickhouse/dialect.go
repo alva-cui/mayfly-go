@@ -122,11 +122,16 @@ func (csg *ClickHouseSQLGenerator) GenInsert(tableName string, columns []dbi.Col
 			strings.Join(valueRows, ", "))
 
 		return []string{sql}
-	case dbi.DuplicateStrategyIgnore, dbi.DuplicateStrategyUpdate:
+	case dbi.DuplicateStrategyIgnore:
+		// 对于DuplicateStrategyIgnore，使用INSERT IGNORE语法
+		sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+			quote(tableName),
+			strings.Join(columnNames, ", "),
+			strings.Join(valueRows, ", "))
+
+		return []string{sql}
+	case dbi.DuplicateStrategyUpdate:
 		// 对于DuplicateStrategyIgnore和DuplicateStrategyUpdate，先删除重复数据，再插入新数据
-		// 对于MergeTree引擎，这两种策略效果相同
-		// 注意：这需要目标表有明确的主键列来识别重复项
-		// 假设第一列是主键列（在实际应用中应该根据表结构确定主键列）
 		keyColumn := columnNames[0]
 
 		// 构建删除重复数据的SQL
