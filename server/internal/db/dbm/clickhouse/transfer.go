@@ -4,23 +4,23 @@ import (
 	"mayfly-go/internal/db/dbm/dbi"
 )
 
-// ClickHouseTransfer handles data transfer operations for ClickHouse
+// ClickHousetransfer处理Clickhouse的数据传输操作
 type ClickHouseTransfer struct {
 	dc *dbi.DbConn
 }
 
-// NewClickHouseTransfer creates a new ClickHouseTransfer instance
+// newClickhousetransfer创建了一个新的ClickHousetransfer实例
 func NewClickHouseTransfer(conn *dbi.DbConn) *ClickHouseTransfer {
 	return &ClickHouseTransfer{dc: conn}
 }
 
-// GetInsertSql generates INSERT SQL for transferring data to ClickHouse
+// getinsertsql生成插入SQL，用于将数据传输到Clickhouse
 func (ct *ClickHouseTransfer) GetInsertSql(tableName string, columns []dbi.Column, values [][]any) []string {
 	generator := NewClickHouseSqlGenerator(ct.dc.GetDialect())
 	return generator.GenerateInsertSql(tableName, columns, values)
 }
 
-// GetBatchInsertSql generates batch INSERT SQL for better performance
+// getBatchInsertsql生成批处理插入SQL以提高性能
 func (ct *ClickHouseTransfer) GetBatchInsertSql(tableName string, columns []dbi.Column, values [][]any) string {
 	generator := NewClickHouseSqlGenerator(ct.dc.GetDialect())
 	return generator.generateBatchInsertSql(tableName, columns, values)
@@ -29,27 +29,27 @@ func (ct *ClickHouseTransfer) GetBatchInsertSql(tableName string, columns []dbi.
 // ProcessColumns processes columns for ClickHouse compatibility
 func (ct *ClickHouseTransfer) ProcessColumns(columns []dbi.Column) []dbi.Column {
 	processed := make([]dbi.Column, len(columns))
-	
+
 	for i, col := range columns {
 		processed[i] = col
-		
-		// Convert data types to ClickHouse compatible types
+
+		// 将数据类型转换为Clickhouse兼容类型
 		processed[i].DataType = ct.convertDataType(col.DataType)
-		
-		// Handle nullable types
+
+		// 处理无效类型
 		if col.Nullable {
 			processed[i].DataType = "Nullable(" + processed[i].DataType + ")"
 		}
 	}
-	
+
 	return processed
 }
 
-// convertDataType converts source database data types to ClickHouse data types
+// 将源数据库数据类型转换为clickhouse数据类型
 func (ct *ClickHouseTransfer) convertDataType(sourceType string) string {
-	// This is a simplified mapping. In practice, this would be more comprehensive
-	// and might need to be adjusted based on the source database type
-	
+	// 这是一个简化的映射。实际上，这将更加全面
+	// 并且可能需要根据源数据库类型进行调整
+
 	switch sourceType {
 	case "VARCHAR", "CHAR", "TEXT", "MEDIUMTEXT", "LONGTEXT":
 		return "String"
@@ -79,10 +79,10 @@ func (ct *ClickHouseTransfer) convertDataType(sourceType string) string {
 	}
 }
 
-// GetTableOptions returns ClickHouse-specific table options for data transfer
+// GetTableOptions返回数据传输的Clickhouse特定表选项
 func (ct *ClickHouseTransfer) GetTableOptions() map[string]string {
 	return map[string]string{
-		"engine": "MergeTree()",
+		"engine":   "MergeTree()",
 		"order_by": "tuple()",
 	}
 }
@@ -91,7 +91,7 @@ func (ct *ClickHouseTransfer) GetTableOptions() map[string]string {
 func (ct *ClickHouseTransfer) PreTransfer(tableName string) error {
 	// In ClickHouse, we might want to drop the table if it exists before creating it
 	// This is optional and depends on the transfer strategy
-	
+
 	// For now, we'll just return nil as no specific preparation is needed
 	return nil
 }
@@ -100,7 +100,7 @@ func (ct *ClickHouseTransfer) PreTransfer(tableName string) error {
 func (ct *ClickHouseTransfer) PostTransfer(tableName string) error {
 	// ClickHouse might benefit from optimization after bulk inserts
 	// For example, we might want to optimize the table
-	
+
 	_, err := ct.dc.Exec("OPTIMIZE TABLE " + ct.dc.GetDialect().Quoter().Quote(tableName) + " FINAL")
 	return err
 }
